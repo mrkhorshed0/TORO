@@ -1,0 +1,33 @@
+name: Auto Unzip on Push
+on:
+  push:
+    paths:
+      - '**.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  unzip_and_commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract All Zip Files
+        run: |
+          for z in *.zip; do
+            if [ -f "$z" ]; then
+              unzip -o "$z" -d .
+              rm "$z"
+            fi
+          done
+
+      - name: Commit and Push Extracted Files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Auto-extracted zip archive" || exit 0
+          git push
+          
