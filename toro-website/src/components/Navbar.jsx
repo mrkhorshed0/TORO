@@ -1,51 +1,85 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 
+const navItems = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/about', label: 'About' },
+  { to: '/publishing', label: 'Publishing' },
+  { to: '/terms', label: 'Terms' },
+]
+
 function Navbar() {
   const [open, setOpen] = useState(false)
-
-  const links = [
-    { to: '/', label: 'Home' },
-    { to: '/about', label: 'About' },
-    { to: '/computer-division', label: 'Computer Division' },
-    { to: '/apps-games', label: 'Apps & Games' },
-    { to: '/contact', label: 'Contact' },
-  ]
 
   return (
     <header className="navbar">
       <div className="container navbar-inner">
-        <Link to="/" className="logo" onClick={() => setOpen(false)}>
+        <Link
+          to="/"
+          className="brand-wordmark"
+          onClick={() => setOpen(false)}
+        >
           Toro
         </Link>
+
+        <nav className="nav-links" aria-label="Main navigation">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                isActive ? 'nav-link active' : 'nav-link'
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="nav-actions">
+          <Link to="/contact" className="btn btn-primary btn-sm">
+            Contact Us
+          </Link>
+        </div>
 
         <button
           type="button"
           className="nav-toggle"
           aria-label="Toggle navigation menu"
-          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          onClick={() => setOpen((prev) => !prev)}
         >
-          <span></span>
-          <span></span>
-          <span></span>
+          <span />
+          <span />
+          <span />
         </button>
+      </div>
 
-        <nav className={`nav-links ${open ? 'open' : ''}`}>
-          {links.map((link) => (
+      {open && (
+        <nav className="mobile-menu" aria-label="Mobile navigation">
+          {navItems.map((item) => (
             <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.to === '/'}
+              key={item.to}
+              to={item.to}
+              end={item.end}
               className={({ isActive }) =>
-                isActive ? 'nav-link active' : 'nav-link'
+                isActive ? 'mobile-link active' : 'mobile-link'
               }
               onClick={() => setOpen(false)}
             >
-              {link.label}
+              {item.label}
             </NavLink>
           ))}
+          <Link
+            to="/contact"
+            className="btn btn-primary mobile-cta"
+            onClick={() => setOpen(false)}
+          >
+            Contact Us
+          </Link>
         </nav>
-      </div>
+      )}
     </header>
   )
 }

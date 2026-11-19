@@ -1,0 +1,17 @@
+{
+  "name": "toro-root",
+  "private": true,
+  "workspaces": [
+    "toro-website"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=toro-website",
+    "build": "npm run build --workspace=toro-website",
+    "preview": "npm run preview --workspace=toro-website"
+  },
+  "dependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "eslint": "^10.15.0",
+    "firebase": "^13.4.0"
+  }
+}

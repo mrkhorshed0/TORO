@@ -1,0 +1,157 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidSlug(slug) {
+      return slug is string && slug.size() >= 2 && slug.size() <= 64 && slug.matches('^[a-z0-9\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (
+          request.auth.token.email_verified == true &&
+          request.auth.token.email in ['supportgemcartbd@gmail.com', 'toro@gmail.com']
+        )
+      );
+    }
+
+    function isValidGamePolicy(data, slug) {
+      return data.keys().hasAll([
+        'slug', 'gameTitle', 'platforms', 'summary', 'dataCollected',
+        'usesAdMob', 'usesUnityAds', 'usesAnalytics', 'directedAtChildrenUnder13',
+        'contactEmail', 'studioLocation', 'lastUpdated', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'slug', 'gameTitle', 'platforms', 'summary', 'dataCollected',
+        'usesAdMob', 'usesUnityAds', 'usesAnalytics', 'directedAtChildrenUnder13',
+        'contactEmail', 'studioLocation', 'lastUpdated', 'updatedAt'
+      ]) &&
+      data.slug == slug &&
+      isValidSlug(data.slug) &&
+      data.gameTitle is string && data.gameTitle.size() >= 1 && data.gameTitle.size() <= 120 &&
+      data.platforms is string && data.platforms.size() >= 1 && data.platforms.size() <= 120 &&
+      data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 2000 &&
+      data.dataCollected is list && data.dataCollected.size() >= 1 && data.dataCollected.size() <= 20 &&
+      data.dataCollected[0] is string && data.dataCollected[0].size() <= 300 &&
+      data.usesAdMob is bool &&
+      data.usesUnityAds is bool &&
+      data.usesAnalytics is bool &&
+      data.directedAtChildrenUnder13 is bool &&
+      data.contactEmail is string && data.contactEmail.size() >= 3 && data.contactEmail.size() <= 120 &&
+      data.studioLocation is string && data.studioLocation.size() >= 1 && data.studioLocation.size() <= 120 &&
+      data.lastUpdated is string && data.lastUpdated.size() >= 1 && data.lastUpdated.size() <= 60 &&
+      data.updatedAt == request.time;
+    }
+
+    function isValidSiteContent(data, sectionId) {
+      return data.keys().hasAll(['sectionId', 'title', 'lead', 'updatedAt']) &&
+      data.keys().hasOnly([
+        'sectionId', 'kicker', 'title', 'lead', 'bodyParagraphs',
+        'email', 'location', 'platforms', 'ctaLabel', 'lastUpdated', 'updatedAt'
+      ]) &&
+      data.sectionId == sectionId &&
+      data.sectionId in ['home', 'about', 'publishing', 'contact', 'privacyPolicy', 'terms'] &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+      data.lead is string && data.lead.size() >= 1 && data.lead.size() <= 800 &&
+      (!('kicker' in data) || (data.kicker is string && data.kicker.size() <= 120)) &&
+      (!('bodyParagraphs' in data) || (
+        data.bodyParagraphs is list &&
+        data.bodyParagraphs.size() <= 25 &&
+        (data.bodyParagraphs.size() == 0 || (data.bodyParagraphs[0] is string && data.bodyParagraphs[0].size() <= 2000))
+      )) &&
+      (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+      (!('location' in data) || (data.location is string && data.location.size() <= 120)) &&
+      (!('platforms' in data) || (data.platforms is string && data.platforms.size() <= 160)) &&
+      (!('ctaLabel' in data) || (data.ctaLabel is string && data.ctaLabel.size() <= 80)) &&
+      (!('lastUpdated' in data) || (data.lastUpdated is string && data.lastUpdated.size() <= 60)) &&
+      data.updatedAt == request.time;
+    }
+
+    function isValidContactCreate(data) {
+      return data.keys().hasAll(['name', 'email', 'topic', 'message', 'status', 'createdAt']) &&
+      data.keys().hasOnly(['name', 'email', 'topic', 'message', 'status', 'createdAt']) &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+      data.email is string && data.email.size() >= 3 && data.email.size() <= 140 &&
+      data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+      data.topic in ['Player Support', 'Game Feedback', 'Business & Publishing', 'Privacy Inquiry'] &&
+      data.message is string && data.message.size() >= 1 && data.message.size() <= 3000 &&
+      data.status == 'unread' &&
+      data.createdAt == request.time;
+    }
+
+    function isValidContactUpdate(data) {
+      return data.keys().hasAll(['name', 'email', 'topic', 'message', 'status', 'createdAt']) &&
+      data.keys().hasOnly(['name', 'email', 'topic', 'message', 'status', 'createdAt']) &&
+      data.name == existing().name &&
+      data.email == existing().email &&
+      data.topic == existing().topic &&
+      data.message == existing().message &&
+      data.createdAt == existing().createdAt &&
+      data.status in ['unread', 'read', 'archived'];
+    }
+
+    // Unlisted per-game privacy policies:
+    // Public can fetch ONLY a single document by exact slug (cannot list/enumerate).
+    // Admin can list, create, update, and delete.
+    match /gamePolicies/{slug} {
+      allow get: if isValidSlug(slug);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidSlug(slug) && isValidGamePolicy(incoming(), slug);
+      allow update: if isAdmin() && isValidSlug(slug) && isValidGamePolicy(incoming(), slug);
+      allow delete: if isAdmin() && isValidSlug(slug);
+    }
+
+    // Public studio page content & legal documents
+    match /siteContent/{sectionId} {
+      allow get: if isValidId(sectionId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(sectionId) && isValidSiteContent(incoming(), sectionId);
+      allow update: if isAdmin() && isValidId(sectionId) && isValidSiteContent(incoming(), sectionId);
+      allow delete: if isAdmin() && isValidId(sectionId);
+    }
+
+    // Public contact form inbox (write-only create for visitors, full management for admin)
+    match /contactMessages/{messageId} {
+      allow create: if isValidId(messageId) && isValidContactCreate(incoming());
+      allow get: if isAdmin() && isValidId(messageId);
+      allow list: if isAdmin();
+      allow update: if isAdmin() && isValidId(messageId) &&
+        isValidContactUpdate(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin() && isValidId(messageId);
+    }
+
+    // Trusted admin UID lookup
+    match /admins/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid && isValidId(uid);
+      allow list, create, update, delete: if false;
+    }
+
+    // Startup connection check document
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}

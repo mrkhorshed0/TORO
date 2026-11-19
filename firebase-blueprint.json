@@ -1,0 +1,217 @@
+{
+  "entities": {
+    "GamePolicy": {
+      "title": "GamePolicy",
+      "description": "Unlisted per-game privacy policy published at /p/{slug}",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$",
+          "description": "URL-safe slug for the unlisted policy route"
+        },
+        "gameTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Display name of the mobile game"
+        },
+        "platforms": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Storefronts where the game is distributed"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Opening privacy policy summary paragraph"
+        },
+        "dataCollected": {
+          "type": "array",
+          "description": "List of technical or ad data categories processed by the game"
+        },
+        "usesAdMob": {
+          "type": "boolean"
+        },
+        "usesUnityAds": {
+          "type": "boolean"
+        },
+        "usesAnalytics": {
+          "type": "boolean"
+        },
+        "directedAtChildrenUnder13": {
+          "type": "boolean"
+        },
+        "contactEmail": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "studioLocation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "lastUpdated": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "slug",
+        "gameTitle",
+        "platforms",
+        "summary",
+        "dataCollected",
+        "usesAdMob",
+        "usesUnityAds",
+        "usesAnalytics",
+        "directedAtChildrenUnder13",
+        "contactEmail",
+        "studioLocation",
+        "lastUpdated",
+        "updatedAt"
+      ]
+    },
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "Editable copy and legal content for Toro public studio pages",
+      "type": "object",
+      "properties": {
+        "sectionId": {
+          "type": "string",
+          "enum": ["home", "about", "publishing", "contact", "privacyPolicy", "terms"]
+        },
+        "kicker": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lead": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        },
+        "bodyParagraphs": {
+          "type": "array",
+          "description": "Structured section blocks or paragraphs"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "platforms": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "ctaLabel": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "lastUpdated": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["sectionId", "title", "lead", "updatedAt"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Inquiry submitted via the public Contact form",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 140
+        },
+        "topic": {
+          "type": "string",
+          "enum": [
+            "Player Support",
+            "Game Feedback",
+            "Business & Publishing",
+            "Privacy Inquiry"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["unread", "read", "archived"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "email", "topic", "message", "status", "createdAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized studio administrator profile keyed by Firebase Auth UID",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 140
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/gamePolicies/{slug}": {
+      "schema": { "$ref": "#/entities/GamePolicy" },
+      "description": "Unlisted per-game privacy policies readable by direct slug lookup and managed by admin."
+    },
+    "/siteContent/{sectionId}": {
+      "schema": { "$ref": "#/entities/SiteContent" },
+      "description": "Editable copy for Home, About, Publishing, Contact, Studio Privacy Policy, and Terms."
+    },
+    "/contactMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Public contact form submissions readable and manageable exclusively by admin."
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Trusted admin UID registry."
+    }
+  }
+}

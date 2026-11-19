@@ -1,31 +1,103 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
+import { SiteContentProvider } from './context/SiteContentContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
 import About from './pages/About'
-import ComputerDivision from './pages/ComputerDivision'
-import AppsGames from './pages/AppsGames'
+import Publishing from './pages/Publishing'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import Contact from './pages/Contact'
+import GamePolicy from './pages/GamePolicy'
+import Admin from './pages/Admin'
 
-function App() {
+function ScrollToTop() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+
+  return null
+}
+
+function StudioLayout({ children }) {
   return (
     <div className="app">
       <Navbar />
-      <main className="main">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/computer-division" element={<ComputerDivision />} />
-          <Route path="/apps-games" element={<AppsGames />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/contact" element={<Contact />} />
-        </Routes>
-      </main>
+      <main className="main">{children}</main>
       <Footer />
     </div>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <SiteContentProvider>
+        <ScrollToTop />
+        <Routes>
+          {/* Public Indie Game Studio Pages */}
+          <Route
+            path="/"
+            element={
+              <StudioLayout>
+                <Home />
+              </StudioLayout>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <StudioLayout>
+                <About />
+              </StudioLayout>
+            }
+          />
+          <Route
+            path="/publishing"
+            element={
+              <StudioLayout>
+                <Publishing />
+              </StudioLayout>
+            }
+          />
+          <Route
+            path="/privacy-policy"
+            element={
+              <StudioLayout>
+                <PrivacyPolicy />
+              </StudioLayout>
+            }
+          />
+          <Route
+            path="/terms"
+            element={
+              <StudioLayout>
+                <Terms />
+              </StudioLayout>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <StudioLayout>
+                <Contact />
+              </StudioLayout>
+            }
+          />
+
+          {/* Unlisted Per-Game Privacy Policy Routes (Direct link only, noindex) */}
+          <Route path="/p/:slug" element={<GamePolicy />} />
+          <Route path="/policy/:slug" element={<GamePolicy />} />
+
+          {/* Unlisted Studio Admin Console */}
+          <Route path="/khorshed/admin" element={<Admin />} />
+        </Routes>
+      </SiteContentProvider>
+    </ErrorBoundary>
   )
 }
 
