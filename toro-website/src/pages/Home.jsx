@@ -45,7 +45,7 @@ function Home() {
                 <span className="meta-sep" aria-hidden="true">
                   ·
                 </span>
-                <span>Independent Developer</span>
+                <span>Indie Studio</span>
               </div>
             </div>
 

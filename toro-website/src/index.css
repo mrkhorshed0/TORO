@@ -938,6 +938,12 @@ img {
     padding: 40px 0 36px;
   }
 
+  .hero-meta-row {
+    font-size: 0.8125rem;
+    gap: 6px;
+    margin-top: 28px;
+  }
+
   .section {
     padding: 48px 0;
   }
@@ -1036,12 +1042,13 @@ img {
 
 .admin-auth-card {
   width: 100%;
-  max-width: 460px;
+  max-width: 440px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 36px;
   box-shadow: var(--shadow-subtle);
+  overflow-wrap: anywhere;
 }
 
 .admin-auth-card h1 {
@@ -1055,31 +1062,28 @@ img {
   margin-bottom: 24px;
 }
 
-.admin-setup-guide {
-  margin-top: 24px;
-  padding-top: 18px;
+.admin-auth-footer {
+  margin-top: 22px;
+  padding-top: 16px;
   border-top: 1px solid var(--border);
-  font-size: 0.875rem;
+  text-align: center;
 }
 
-.admin-setup-guide summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--heading);
-}
-
-.admin-setup-guide ol {
-  margin: 12px 0 0 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.break-word,
+code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .admin-verify-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 20px;
+}
+
+.admin-verify-actions .btn {
+  width: 100%;
 }
 
 /* Admin Workspace Layout (256px Daylight Sidebar + Sticky Topbar) */
@@ -1633,8 +1637,26 @@ img {
     display: inline-flex;
   }
 
+  .admin-topbar {
+    padding: 0 16px;
+  }
+
   .admin-main {
     padding: 20px 16px;
+  }
+
+  .admin-auth-shell {
+    padding: 16px;
+  }
+
+  .admin-auth-card {
+    padding: 26px 20px;
+  }
+
+  .admin-search {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .admin-form-grid,

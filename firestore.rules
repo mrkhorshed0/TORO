@@ -32,7 +32,11 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         (
           request.auth.token.email_verified == true &&
-          request.auth.token.email in ['supportgemcartbd@gmail.com', 'toro@gmail.com']
+          request.auth.token.email in [
+            'mdkhorshedalom573@gmail.com',
+            'supportgemcartbd@gmail.com',
+            'toro@gmail.com'
+          ]
         )
       );
     }

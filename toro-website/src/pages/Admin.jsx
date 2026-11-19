@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   onAuthStateChanged,
   sendEmailVerification,
@@ -6,12 +7,13 @@ import {
   signOut,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
-import { auth, db, firebaseProjectId } from '../lib/firebase'
+import { auth, db } from '../lib/firebase'
 import AdminPoliciesTab from './admin/AdminPoliciesTab'
 import AdminContentTab from './admin/AdminContentTab'
 import AdminInboxTab from './admin/AdminInboxTab'
 
 const BOOTSTRAPPED_ADMIN_EMAILS = [
+  'mdkhorshedalom573@gmail.com',
   'supportgemcartbd@gmail.com',
   'toro@gmail.com',
 ]
@@ -26,6 +28,7 @@ const ADMIN_TABS = [
 function Admin() {
   const [authLoading, setAuthLoading] = useState(true)
   const [user, setUser] = useState(null)
+  const [emailVerified, setEmailVerified] = useState(false)
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [activeTab, setActiveTab] = useState('policies')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -35,6 +38,7 @@ function Admin() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [signingIn, setSigningIn] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(false)
   const [verificationSent, setVerificationSent] = useState('')
 
   useEffect(() => {
@@ -65,13 +69,15 @@ function Admin() {
 
   const evaluateAuthorization = async (firebaseUser) => {
     if (!firebaseUser) {
+      setEmailVerified(false)
       setIsAuthorized(false)
       return
     }
 
+    setEmailVerified(Boolean(firebaseUser.emailVerified))
     const emailNormalized = (firebaseUser.email || '').toLowerCase()
     const isBootstrappedEmail =
-      firebaseUser.emailVerified &&
+      Boolean(firebaseUser.emailVerified) &&
       BOOTSTRAPPED_ADMIN_EMAILS.includes(emailNormalized)
 
     if (isBootstrappedEmail) {
@@ -103,7 +109,7 @@ function Admin() {
 
     const cleanEmail = email.trim()
     if (!cleanEmail || !password) {
-      setLoginError('Please enter both your admin email and password.')
+      setLoginError('Please enter both your email address and password.')
       return
     }
 
@@ -118,15 +124,11 @@ function Admin() {
         code === 'auth/wrong-password' ||
         code === 'auth/user-not-found'
       ) {
-        setLoginError('Incorrect email or password. Please check your credentials.')
-      } else if (code === 'auth/operation-not-allowed') {
-        setLoginError(
-          'Email/Password sign-in is not enabled yet in Firebase Console. Open the setup instructions below.'
-        )
+        setLoginError('Incorrect email or password. Please try again.')
       } else if (code === 'auth/too-many-requests') {
         setLoginError('Too many failed attempts. Please wait a moment and try again.')
       } else {
-        setLoginError(err?.message || 'Unable to sign in.')
+        setLoginError('Unable to sign in right now. Please check your credentials.')
       }
     } finally {
       setSigningIn(false)
@@ -134,36 +136,48 @@ function Admin() {
   }
 
   const handleSendVerification = async () => {
-    if (!user) return
+    if (!auth.currentUser) return
     setVerificationSent('')
     try {
-      await sendEmailVerification(user)
+      await sendEmailVerification(auth.currentUser)
       setVerificationSent(
-        `Verification link sent to ${user.email}. Click the link in your inbox, then press Refresh Status.`
+        `A verification link has been sent to ${auth.currentUser.email}. Open the link in your inbox, then tap Refresh Status.`
       )
-    } catch (err) {
-      setVerificationSent(err?.message || 'Could not send verification email right now.')
+    } catch {
+      setVerificationSent('Could not send verification email right now. Please wait a moment and try again.')
     }
   }
 
   const handleRefreshUser = async () => {
     if (!auth.currentUser) return
-    await auth.currentUser.reload()
-    setUser({ ...auth.currentUser })
-    await evaluateAuthorization(auth.currentUser)
+    setCheckingStatus(true)
+    setVerificationSent('')
+    try {
+      await auth.currentUser.reload()
+      await auth.currentUser.getIdToken(true)
+      setUser(auth.currentUser)
+      await evaluateAuthorization(auth.currentUser)
+      if (!auth.currentUser.emailVerified) {
+        setVerificationSent('Email is still unverified. Please click the verification link in your email first.')
+      }
+    } finally {
+      setCheckingStatus(false)
+    }
   }
 
   const handleSignOut = async () => {
     await signOut(auth)
+    setEmailVerified(false)
     setIsAuthorized(false)
+    setVerificationSent('')
   }
 
   if (authLoading) {
     return (
       <div className="admin-auth-shell">
         <div className="admin-auth-card">
-          <p className="kicker-text">Toro Studio Console</p>
-          <h1>Loading workspace...</h1>
+          <p className="kicker-text">Toro Studio</p>
+          <h1>Loading Console</h1>
           <div className="skeleton-line skeleton-lg" />
           <div className="skeleton-line skeleton-md" />
         </div>
@@ -175,21 +189,21 @@ function Admin() {
     return (
       <div className="admin-auth-shell">
         <div className="admin-auth-card">
-          <p className="kicker-text">Toro · Private Access</p>
-          <h1>Studio Admin Sign In</h1>
+          <p className="kicker-text">Toro Studio</p>
+          <h1>Admin Sign In</h1>
           <p className="admin-auth-sub">
             Sign in with your studio email and password to manage game privacy
-            policies, site copy, and player messages.
+            policies, site copy, and messages.
           </p>
 
           <form className="form" onSubmit={handleLogin} noValidate>
             <div className="form-group">
-              <label htmlFor="admin-email">Admin Email</label>
+              <label htmlFor="admin-email">Email Address</label>
               <input
                 id="admin-email"
                 type="email"
                 autoComplete="email"
-                placeholder="supportgemcartbd@gmail.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -215,7 +229,7 @@ function Admin() {
               disabled={signingIn}
               style={{ width: '100%' }}
             >
-              {signingIn ? 'Signing In...' : 'Sign In to Admin Panel'}
+              {signingIn ? 'Signing In...' : 'Sign In'}
             </button>
 
             {loginError && (
@@ -225,28 +239,11 @@ function Admin() {
             )}
           </form>
 
-          <details className="admin-setup-guide">
-            <summary>First-time Firebase Email/Password Setup Guide</summary>
-            <ol>
-              <li>
-                Open Firebase Console for project{' '}
-                <code>{firebaseProjectId}</code>.
-              </li>
-              <li>
-                Go to <strong>Authentication → Sign-in method</strong> and enable{' '}
-                <strong>Email/Password</strong>.
-              </li>
-              <li>
-                Under <strong>Authentication → Users</strong>, add your admin
-                email (e.g. <code>supportgemcartbd@gmail.com</code> or{' '}
-                <code>toro@gmail.com</code>) and set your password.
-              </li>
-              <li>
-                Sign in above. On first login, verify your email (or add your UID
-                to Firestore collection <code>admins</code>).
-              </li>
-            </ol>
-          </details>
+          <div className="admin-auth-footer">
+            <Link to="/" className="text-link">
+              Return to Toro Website
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -256,20 +253,20 @@ function Admin() {
     return (
       <div className="admin-auth-shell">
         <div className="admin-auth-card">
-          <p className="kicker-text">Verification Required</p>
-          <h1>Confirm Admin Identity</h1>
-          <p className="admin-auth-sub">
-            Signed in as <strong>{user.email}</strong> (UID:{' '}
-            <code>{user.uid}</code>).
+          <p className="kicker-text">
+            {emailVerified ? 'Access Restricted' : 'Email Verification'}
           </p>
-
-          {!user.emailVerified && (
-            <p className="admin-auth-sub">
-              Your email address is not verified yet. Verify your email or add a
-              document at Firestore path <code>admins/{user.uid}</code> with{' '}
-              <code>{'{ email, role: "admin" }'}</code>.
-            </p>
-          )}
+          <h1>
+            {emailVerified
+              ? 'Account Not Authorized'
+              : 'Verify Your Email'}
+          </h1>
+          <p className="admin-auth-sub">
+            Signed in as <strong className="break-word">{user.email}</strong>.{' '}
+            {emailVerified
+              ? 'This email address does not have administrator permission for the Toro console.'
+              : 'Please verify your email address before entering the studio console.'}
+          </p>
 
           {verificationSent && (
             <p className="form-feedback" role="status">
@@ -278,7 +275,7 @@ function Admin() {
           )}
 
           <div className="admin-verify-actions">
-            {!user.emailVerified && (
+            {!emailVerified && (
               <button
                 type="button"
                 className="btn btn-primary"
@@ -291,8 +288,9 @@ function Admin() {
               type="button"
               className="btn btn-secondary"
               onClick={handleRefreshUser}
+              disabled={checkingStatus}
             >
-              Refresh Status
+              {checkingStatus ? 'Checking...' : 'Refresh Status'}
             </button>
             <button
               type="button"
@@ -339,9 +337,9 @@ function Admin() {
             {user.email}
           </div>
           <div className="admin-sidebar-links">
-            <a href="/" className="text-link" style={{ minHeight: '32px' }}>
-              View Public Site
-            </a>
+            <Link to="/" className="text-link" style={{ minHeight: '32px' }}>
+              Public Site
+            </Link>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
@@ -376,14 +374,9 @@ function Admin() {
           </div>
 
           <div className="admin-topbar-right">
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-secondary btn-sm"
-            >
-              Open Live Site
-            </a>
+            <Link to="/" className="btn btn-secondary btn-sm">
+              View Live Site
+            </Link>
           </div>
         </header>
 
