@@ -7,9 +7,18 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
+    let message = 'An unexpected error occurred.'
+    if (error instanceof Error) {
+      try {
+        const parsed = JSON.parse(error.message)
+        message = parsed?.error || error.message
+      } catch {
+        message = error.message
+      }
+    }
     return {
       hasError: true,
-      message: error instanceof Error ? error.message : 'An unexpected error occurred.',
+      message,
     }
   }
 

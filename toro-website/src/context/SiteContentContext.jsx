@@ -1,18 +1,28 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
-import { db, handleFirestoreError, OperationType } from '../lib/firebase'
+import {
+  db,
+  handleFirestoreError,
+  isFirebaseConfigured,
+  OperationType,
+} from '../lib/firebase'
 import { defaultSiteContent } from '../data/defaultSiteContent'
 
 const SiteContentContext = createContext({
   content: defaultSiteContent,
-  loading: true,
+  loading: false,
 })
 
 export function SiteContentProvider({ children }) {
   const [content, setContent] = useState(defaultSiteContent)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(isFirebaseConfigured)
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !db) {
+      setLoading(false)
+      return undefined
+    }
+
     const path = 'siteContent'
     const unsubscribe = onSnapshot(
       collection(db, path),

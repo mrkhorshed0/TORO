@@ -9,6 +9,8 @@ import {
 } from 'firebase/firestore'
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase'
 import { gamePolicies as starterPolicies } from '../../data/gamePolicies'
+import { copyTextToClipboard } from '../../utils/clipboard'
+import { isValidEmail, sanitizeSlug } from '../../utils/validators'
 
 const EMPTY_FORM = {
   slug: '',
@@ -27,15 +29,6 @@ const EMPTY_FORM = {
   studioLocation: 'Rangpur, Bangladesh',
 }
 
-function sanitizeSlug(value) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64)
-}
-
 function AdminPoliciesTab() {
   const [policies, setPolicies] = useState([])
   const [loading, setLoading] = useState(true)
@@ -50,6 +43,11 @@ function AdminPoliciesTab() {
   const [confirmDeleteSlug, setConfirmDeleteSlug] = useState('')
 
   useEffect(() => {
+    if (!db) {
+      setLoading(false)
+      return undefined
+    }
+
     const path = 'gamePolicies'
     const unsubscribe = onSnapshot(
       collection(db, path),
@@ -64,7 +62,11 @@ function AdminPoliciesTab() {
       },
       (err) => {
         setLoading(false)
-        handleFirestoreError(err, OperationType.LIST, path)
+        try {
+          handleFirestoreError(err, OperationType.LIST, path)
+        } catch {
+          setError('Could not load policies. Please check your permissions or connection.')
+        }
       }
     )
 
@@ -138,6 +140,16 @@ function AdminPoliciesTab() {
       return
     }
 
+    if (!isValidEmail(contactEmail)) {
+      setError('Please enter a valid developer contact email address.')
+      return
+    }
+
+    if (!db) {
+      setError('Database is not connected.')
+      return
+    }
+
     setSaving(true)
     const path = `gamePolicies/${cleanSlug}`
     try {
@@ -161,27 +173,37 @@ function AdminPoliciesTab() {
       setShowEditor(false)
       setEditingSlug(null)
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, path)
+      try {
+        handleFirestoreError(err, OperationType.WRITE, path)
+      } catch {
+        setError('Unable to save policy. Please verify your admin permissions and try again.')
+      }
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (slug) => {
+    if (!db) return
     const path = `gamePolicies/${slug}`
     try {
       await deleteDoc(doc(db, 'gamePolicies', slug))
       setConfirmDeleteSlug('')
       setNotice(`Removed policy /p/${slug}`)
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, path)
+      try {
+        handleFirestoreError(err, OperationType.DELETE, path)
+      } catch {
+        setError('Unable to delete policy right now.')
+      }
     }
   }
 
   const handleImportStarter = async () => {
     const starter = starterPolicies['toro-game-1']
-    if (!starter) return
+    if (!starter || !db) return
     setSaving(true)
+    setError('')
     const path = 'gamePolicies/toro-game-1'
     try {
       await setDoc(doc(db, 'gamePolicies', 'toro-game-1'), {
@@ -201,7 +223,11 @@ function AdminPoliciesTab() {
       })
       setNotice('Imported starter policy /p/toro-game-1 into Firestore.')
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, path)
+      try {
+        handleFirestoreError(err, OperationType.CREATE, path)
+      } catch {
+        setError('Unable to import starter policy right now.')
+      }
     } finally {
       setSaving(false)
     }
@@ -209,11 +235,11 @@ function AdminPoliciesTab() {
 
   const handleCopyUrl = async (slug) => {
     const url = `${window.location.origin}/p/${slug}`
-    try {
-      await navigator.clipboard.writeText(url)
+    const ok = await copyTextToClipboard(url)
+    if (ok) {
       setCopiedSlug(slug)
       setTimeout(() => setCopiedSlug(''), 2500)
-    } catch {
+    } else {
       setCopiedSlug('')
     }
   }

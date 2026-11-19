@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db, handleFirestoreError, OperationType } from '../lib/firebase'
+import { db, handleFirestoreError, isFirebaseConfigured, OperationType } from '../lib/firebase'
 import { useSiteContent } from '../context/SiteContentContext'
+import { copyTextToClipboard } from '../utils/clipboard'
+import { normalizeContactForm } from '../utils/validators'
 
 const TOPICS = [
   'Player Support',
@@ -31,18 +33,16 @@ function Contact() {
     setError('')
     setStatus('')
 
-    const trimmedName = form.name.trim().slice(0, 100)
-    const trimmedEmail = form.email.trim().slice(0, 140)
-    const trimmedMessage = form.message.trim().slice(0, 3000)
-
-    if (!trimmedName || !trimmedEmail || !trimmedMessage) {
-      setError('Please complete your name, email address, and message.')
+    const validation = normalizeContactForm(form, TOPICS)
+    if (!validation.ok) {
+      setError(validation.error)
       return
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(trimmedEmail)) {
-      setError('Please enter a valid email address.')
+    if (!isFirebaseConfigured || !db) {
+      setError(
+        `Direct form delivery is currently offline. Please email us directly at ${studioEmail}.`
+      )
       return
     }
 
@@ -50,10 +50,7 @@ function Contact() {
     const path = 'contactMessages'
     try {
       await addDoc(collection(db, path), {
-        name: trimmedName,
-        email: trimmedEmail,
-        topic: TOPICS.includes(form.topic) ? form.topic : TOPICS[0],
-        message: trimmedMessage,
+        ...validation.data,
         status: 'unread',
         createdAt: serverTimestamp(),
       })
@@ -67,7 +64,7 @@ function Contact() {
         handleFirestoreError(err, OperationType.CREATE, path)
       } catch {
         setError(
-          'Unable to submit right now. Please try again or email us directly using the address on this page.'
+          `Unable to submit right now. Please try again or email us directly at ${studioEmail}.`
         )
       }
     } finally {
@@ -76,11 +73,11 @@ function Contact() {
   }
 
   const handleCopyEmail = async () => {
-    try {
-      await navigator.clipboard.writeText(studioEmail)
+    const ok = await copyTextToClipboard(studioEmail)
+    if (ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
-    } catch {
+    } else {
       setCopied(false)
     }
   }

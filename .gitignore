@@ -1,0 +1,20 @@
+# Dependencies & Build Outputs
+node_modules/
+dist/
+toro-website/node_modules/
+toro-website/dist/
+
+# Environment Variables & Local Secrets (NEVER commit to GitHub)
+.env
+.env.*
+!.env.example
+toro-website/.env
+toro-website/.env.*
+!toro-website/.env.example
+firebase-applet-config.json
+**/firebase-applet-config.json
+
+# Test Artifacts & Logs
+.playwright-cli/
+*.log
+.DS_Store

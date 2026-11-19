@@ -12,6 +12,7 @@ import Terms from './pages/Terms'
 import Contact from './pages/Contact'
 import GamePolicy from './pages/GamePolicy'
 import Admin from './pages/Admin'
+import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -95,6 +96,16 @@ function App() {
 
           {/* Unlisted Studio Admin Console */}
           <Route path="/khorshed/admin" element={<Admin />} />
+
+          {/* Clean 404 Fallback */}
+          <Route
+            path="*"
+            element={
+              <StudioLayout>
+                <NotFound />
+              </StudioLayout>
+            }
+          />
         </Routes>
       </SiteContentProvider>
     </ErrorBoundary>

@@ -1,12 +1,49 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { doc, getDocFromServer, getFirestore } from 'firebase/firestore'
-import firebaseConfig from '../../../firebase-applet-config.json'
 
-const app = initializeApp(firebaseConfig)
+// Safely load local AI Studio config if present (gitignored; never committed to GitHub)
+const localConfigModules = import.meta.glob('../../../firebase-applet-config.json', {
+  eager: true,
+})
+const localConfig = Object.values(localConfigModules)[0]?.default || {}
 
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId)
-export const auth = getAuth(app)
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || localConfig.apiKey || '',
+  authDomain:
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || localConfig.authDomain || '',
+  projectId:
+    import.meta.env.VITE_FIREBASE_PROJECT_ID || localConfig.projectId || '',
+  storageBucket:
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
+    localConfig.storageBucket ||
+    '',
+  messagingSenderId:
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+    localConfig.messagingSenderId ||
+    '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || localConfig.appId || '',
+  firestoreDatabaseId:
+    import.meta.env.VITE_FIREBASE_DATABASE_ID ||
+    localConfig.firestoreDatabaseId ||
+    '(default)',
+}
+
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
+)
+
+let app = null
+let db = null
+let auth = null
+
+if (isFirebaseConfigured) {
+  app = initializeApp(firebaseConfig)
+  db = getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  auth = getAuth(app)
+}
+
+export { db, auth }
 export const firebaseProjectId = firebaseConfig.projectId
 
 export const OperationType = {
@@ -22,13 +59,13 @@ export function handleFirestoreError(error, operationType, path) {
   const errInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid ?? null,
-      email: auth.currentUser?.email ?? null,
-      emailVerified: auth.currentUser?.emailVerified ?? null,
-      isAnonymous: auth.currentUser?.isAnonymous ?? null,
-      tenantId: auth.currentUser?.tenantId ?? null,
+      userId: auth?.currentUser?.uid ?? null,
+      email: auth?.currentUser?.email ?? null,
+      emailVerified: auth?.currentUser?.emailVerified ?? null,
+      isAnonymous: auth?.currentUser?.isAnonymous ?? null,
+      tenantId: auth?.currentUser?.tenantId ?? null,
       providerInfo:
-        auth.currentUser?.providerData?.map((provider) => ({
+        auth?.currentUser?.providerData?.map((provider) => ({
           providerId: provider.providerId,
           email: provider.email,
         })) || [],
@@ -41,6 +78,7 @@ export function handleFirestoreError(error, operationType, path) {
 }
 
 async function testConnection() {
+  if (!db) return
   try {
     await getDocFromServer(doc(db, 'test', 'connection'))
   } catch (error) {

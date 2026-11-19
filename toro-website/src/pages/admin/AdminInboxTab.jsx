@@ -9,6 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase'
+import { copyTextToClipboard } from '../../utils/clipboard'
 
 const STATUS_FILTERS = [
   { id: 'all', label: 'All' },
@@ -41,8 +42,14 @@ function AdminInboxTab() {
   const [selectedId, setSelectedId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState('')
   const [copiedEmail, setCopiedEmail] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!db) {
+      setLoading(false)
+      return undefined
+    }
+
     const path = 'contactMessages'
     const q = query(collection(db, path), orderBy('createdAt', 'desc'))
     const unsubscribe = onSnapshot(
@@ -57,7 +64,11 @@ function AdminInboxTab() {
       },
       (err) => {
         setLoading(false)
-        handleFirestoreError(err, OperationType.LIST, path)
+        try {
+          handleFirestoreError(err, OperationType.LIST, path)
+        } catch {
+          setError('Could not load inbox messages. Please verify your permissions.')
+        }
       }
     )
 
@@ -94,11 +105,17 @@ function AdminInboxTab() {
   )
 
   const handleStatusChange = async (msgId, nextStatus) => {
+    if (!db) return
+    setError('')
     const path = `contactMessages/${msgId}`
     try {
       await updateDoc(doc(db, 'contactMessages', msgId), { status: nextStatus })
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, path)
+      try {
+        handleFirestoreError(err, OperationType.UPDATE, path)
+      } catch {
+        setError('Could not update message status.')
+      }
     }
   }
 
@@ -111,22 +128,28 @@ function AdminInboxTab() {
   }
 
   const handleDelete = async (msgId) => {
+    if (!db) return
+    setError('')
     const path = `contactMessages/${msgId}`
     try {
       await deleteDoc(doc(db, 'contactMessages', msgId))
       setConfirmDeleteId('')
       if (selectedId === msgId) setSelectedId(null)
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, path)
+      try {
+        handleFirestoreError(err, OperationType.DELETE, path)
+      } catch {
+        setError('Could not delete this message.')
+      }
     }
   }
 
   const handleCopySenderEmail = async (email) => {
-    try {
-      await navigator.clipboard.writeText(email)
+    const ok = await copyTextToClipboard(email)
+    if (ok) {
       setCopiedEmail(true)
       setTimeout(() => setCopiedEmail(false), 2000)
-    } catch {
+    } else {
       setCopiedEmail(false)
     }
   }
@@ -141,6 +164,12 @@ function AdminInboxTab() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="form-error" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="admin-filter-bar">
         <div className="segmented-tabs" role="tablist" aria-label="Filter inbox">

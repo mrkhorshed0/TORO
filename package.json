@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "npm run dev --workspace=toro-website",
     "build": "npm run build --workspace=toro-website",
-    "preview": "npm run preview --workspace=toro-website"
+    "preview": "npm run preview --workspace=toro-website",
+    "lint": "eslint firestore.rules"
   },
   "dependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",

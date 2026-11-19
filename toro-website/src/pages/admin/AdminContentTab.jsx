@@ -101,19 +101,29 @@ function AdminContentTab({ mode }) {
       payload.lastUpdated = form.lastUpdated.trim().slice(0, 60) || 'November 2026'
     }
 
+    if (!db) {
+      setError('Database is not connected.')
+      return
+    }
+
     setSaving(true)
     const path = `siteContent/${activeSection}`
     try {
       await setDoc(doc(db, 'siteContent', activeSection), payload)
       setNotice('Published changes live to the public website.')
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, path)
+      try {
+        handleFirestoreError(err, OperationType.WRITE, path)
+      } catch {
+        setError('Unable to publish changes right now. Please verify your admin session.')
+      }
     } finally {
       setSaving(false)
     }
   }
 
   const handleResetDefault = async () => {
+    if (!db) return
     setSaving(true)
     setError('')
     setNotice('')
@@ -122,7 +132,11 @@ function AdminContentTab({ mode }) {
       await deleteDoc(doc(db, 'siteContent', activeSection))
       setNotice('Restored built-in default copy for this section.')
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, path)
+      try {
+        handleFirestoreError(err, OperationType.DELETE, path)
+      } catch {
+        setError('Unable to reset default copy right now.')
+      }
     } finally {
       setSaving(false)
     }

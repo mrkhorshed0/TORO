@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
-import { db, handleFirestoreError, OperationType } from '../lib/firebase'
+import {
+  db,
+  handleFirestoreError,
+  isFirebaseConfigured,
+  OperationType,
+} from '../lib/firebase'
 import { gamePolicies } from '../data/gamePolicies'
-
-const VALID_SLUG_REGEX = /^[a-z0-9-]+$/
+import { isValidPolicySlug } from '../utils/validators'
 
 function GamePolicy() {
   const { slug } = useParams()
@@ -15,9 +19,17 @@ function GamePolicy() {
     let active = true
 
     async function loadPolicy() {
-      if (!slug || !VALID_SLUG_REGEX.test(slug) || slug.length < 2 || slug.length > 64) {
+      if (!isValidPolicySlug(slug)) {
         if (active) {
           setPolicy(null)
+          setLoading(false)
+        }
+        return
+      }
+
+      if (!isFirebaseConfigured || !db) {
+        if (active) {
+          setPolicy(gamePolicies[slug] || null)
           setLoading(false)
         }
         return

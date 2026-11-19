@@ -7,7 +7,7 @@ import {
   signOut,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
-import { auth, db } from '../lib/firebase'
+import { auth, db, isFirebaseConfigured } from '../lib/firebase'
 import AdminPoliciesTab from './admin/AdminPoliciesTab'
 import AdminContentTab from './admin/AdminContentTab'
 import AdminInboxTab from './admin/AdminInboxTab'
@@ -94,6 +94,11 @@ function Admin() {
   }
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !auth || !db) {
+      setAuthLoading(false)
+      return undefined
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       await evaluateAuthorization(firebaseUser)
@@ -106,6 +111,11 @@ function Admin() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoginError('')
+
+    if (!auth) {
+      setLoginError('Firebase configuration is not set for this environment.')
+      return
+    }
 
     const cleanEmail = email.trim()
     if (!cleanEmail || !password) {
@@ -136,7 +146,7 @@ function Admin() {
   }
 
   const handleSendVerification = async () => {
-    if (!auth.currentUser) return
+    if (!auth?.currentUser) return
     setVerificationSent('')
     try {
       await sendEmailVerification(auth.currentUser)
@@ -149,7 +159,7 @@ function Admin() {
   }
 
   const handleRefreshUser = async () => {
-    if (!auth.currentUser) return
+    if (!auth?.currentUser) return
     setCheckingStatus(true)
     setVerificationSent('')
     try {
@@ -166,7 +176,9 @@ function Admin() {
   }
 
   const handleSignOut = async () => {
-    await signOut(auth)
+    if (auth) {
+      await signOut(auth)
+    }
     setEmailVerified(false)
     setIsAuthorized(false)
     setVerificationSent('')
@@ -180,6 +192,27 @@ function Admin() {
           <h1>Loading Console</h1>
           <div className="skeleton-line skeleton-lg" />
           <div className="skeleton-line skeleton-md" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!isFirebaseConfigured || !auth || !db) {
+    return (
+      <div className="admin-auth-shell">
+        <div className="admin-auth-card">
+          <p className="kicker-text">Environment Setup Required</p>
+          <h1>Console Unavailable</h1>
+          <p className="admin-auth-sub">
+            Firebase environment variables are not configured on this deployment.
+            Add your <code>VITE_FIREBASE_*</code> variables in Vercel Project
+            Settings and redeploy to enable the studio console.
+          </p>
+          <div className="admin-auth-footer">
+            <Link to="/" className="text-link">
+              Return to Toro Website
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -310,6 +343,14 @@ function Admin() {
 
   return (
     <div className="admin-layout">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="admin-backdrop"
+          aria-label="Close admin sidebar"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="admin-sidebar-brand">
           <span className="brand-wordmark">Toro</span>
@@ -358,6 +399,7 @@ function Admin() {
               type="button"
               className="nav-toggle admin-mobile-toggle"
               aria-label="Toggle admin sidebar"
+              aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen((prev) => !prev)}
             >
               <span />
